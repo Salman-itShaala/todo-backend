@@ -51,8 +51,17 @@ app.post("/register", async (req, res) => {
   try {
     const hashedPassword = await bcrypt.hash(password, 10);
     const user = new User({ username, password: hashedPassword });
-    await user.save();
-    res.status(201).json({ message: "User registered successfully" });
+    const savedUser = await user.save();
+    const token = jwt.sign({ id: savedUser._id }, process.env.JWT_SECRET, {
+      expiresIn: "4h",
+    });
+    res
+      .status(201)
+      .json({
+        message: "User registered successfully",
+        userName: savedUser.username,
+        token,
+      });
   } catch (error) {
     res.status(400).json({ error: "Error registering user" });
   }
@@ -69,7 +78,7 @@ app.post("/login", async (req, res) => {
     const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
       expiresIn: "1h",
     });
-    res.json({ token });
+    res.json({ token, userName: user.username });
   } catch (error) {
     console.log(error);
     res.status(400).json({ error: "Error logging in" });
@@ -138,7 +147,4 @@ app.delete("/todos/:id", authenticate, async (req, res) => {
 });
 
 // Start the server
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-  console.log(`Server is running on http://localhost:${PORT}`);
-});
+module.exports = app;
